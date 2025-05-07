@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
-#define FILENAME "/home/roflanuser/tar_working_dir/Гожуленко М.Ю./lab07/genGrog/student_records.dat"
+#define FILENAME "/home/roflanuser/tar_working_dir/Гожуленко_М.Ю./lab07/gen_prog/student_records.dat"
 #define MAX_RECORDS 100
 
 struct record_s {
@@ -29,6 +29,7 @@ int main() {
     int rec_no;
     struct record_s rec, rec_wrk, rec_new;
     bool retry_save;
+    char save_choice[4] = "YES";
     
     fd = open(FILENAME, O_RDWR | O_CREAT, 0644);
     if (fd == -1) {
@@ -60,9 +61,19 @@ int main() {
             rec_wrk = rec;
             modify_record(&rec_wrk);
         } else if (strcmp(command, "PUT") == 0) {
+            if (memcmp(&rec_wrk, &rec, sizeof(struct record_s)) == 0) {
+                printf("Запись не была изменена.\n");
+                continue;
+            }
+            
+            printf("\nТекущие изменения:\n");
+            printf("  Имя: %s\n", rec_wrk.name);
+            printf("  Адрес: %s\n", rec_wrk.address);
+            printf("  Семестр: %d\n", rec_wrk.semester);
+            
             retry_save = true;
             
-            while (retry_save && memcmp(&rec_wrk, &rec, sizeof(struct record_s)) != 0) {
+            while (retry_save) {
                 lock_record(fd, rec_no);
                 rec_new = get_record(fd, rec_no);
                 
@@ -79,8 +90,17 @@ int main() {
                     printf("  Адрес: %s\n", rec_wrk.address);
                     printf("  Семестр: %d\n", rec_wrk.semester);
                     
-                    printf("\nАвтоматическое повторение попытки сохранения...\n");
-                    rec = rec_new;
+                    printf("\nВсё равно сохранить ваши изменения? (YES or press any button and then Enter): ");
+                    scanf("%4s", save_choice);
+                    
+                    if (strcmp(save_choice, "YES") != 0) {
+                        printf("Изменения не сохранены.\n");
+                        retry_save = false;
+                        rec = rec_new;
+                    } else {
+                        rec = rec_new;
+                        printf("\nАвтоматическое повторение попытки сохранения...\n");
+                    }
                 } else {
                     put_record(fd, &rec_wrk, rec_no);
                     unlock_record(fd, rec_no);
@@ -88,10 +108,6 @@ int main() {
                     printf("Запись успешно сохранена.\n");
                     retry_save = false;
                 }
-            }
-            
-            if (memcmp(&rec_wrk, &rec, sizeof(struct record_s)) == 0 && retry_save) {
-                printf("Запись не была изменена.\n");
             }
         } else if (strcmp(command, "EXIT") == 0) {
             break;
